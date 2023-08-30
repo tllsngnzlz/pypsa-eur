@@ -180,12 +180,41 @@ def emission_sectors_from_opts(opts):
     return sectors
 
 
+def linear_interpolate(years, values, target_year):
+    """
+    Perform linear interpolation for a target year using provided years and values for items dependend on target year.
+    """
+    # If the target year is exactly one of the years in the list, return its corresponding value.
+    if target_year in years:
+        return values[years.index(target_year)]
+
+    # Otherwise, find the two years surrounding the target year.
+    for i in range(len(years) - 1):
+        year_start, year_end = years[i], years[i + 1]
+
+        if year_start <= target_year <= year_end:
+            val_start, val_end = values[i], values[i + 1]
+
+            # Perform linear interpolation.
+            interpolated_value = val_start + (val_end - val_start) * (target_year - year_start) / (year_end - year_start)
+            return interpolated_value
+
+    # If the target_year is out of the provided years range, you can raise an error or handle it differently.
+    raise ValueError("Target year is out of range for interpolation.")
+
 def get(item, investment_year=None):
     """
     Check whether item depends on investment year.
     """
     if isinstance(item, dict):
-        return item[investment_year]
+        # If investment_year is directly available, return its value
+        if investment_year in item:
+            return item[investment_year]
+        # If not, interpolate its value
+        sorted_years = sorted(item.keys())
+        sorted_values = [item[year] for year in sorted_years]
+        return linear_interpolate(sorted_years, sorted_values, investment_year)
+
     else:
         return item
 
@@ -3286,13 +3315,13 @@ if __name__ == "__main__":
 
         snakemake = mock_snakemake(
             "prepare_sector_network",
-            configfiles="test/config.overnight.yaml",
+            configfiles="config/247myopic.yaml",
             simpl="",
             opts="",
-            clusters="5",
-            ll="v1.5",
-            sector_opts="CO2L0-24H-T-H-B-I-A-solar+p3-dist1",
-            planning_horizons="2030",
+            clusters="37",
+            ll="v1.0",
+            sector_opts="Co2L0-3H-B-solar+p3",
+            planning_horizons="2025",
         )
 
     logging.basicConfig(level=snakemake.config["logging"]["level"])
