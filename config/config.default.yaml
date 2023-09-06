@@ -31,6 +31,7 @@ foresight: overnight
 # docs in https://pypsa-eur.readthedocs.io/en/latest/configuration.html#scenario
 # Wildcard docs in https://pypsa-eur.readthedocs.io/en/latest/wildcards.html
 scenario:
+  weather_year: [''] # for backwards compatibility
   simpl:
   - ''
   ll:
@@ -69,9 +70,12 @@ enable:
   retrieve_cost_data: true
   build_cutout: false
   retrieve_cutout: true
+  retrieve_opsd_load_data: true
+  retrieve_artificial_load_data: false
   build_natura_raster: false
   retrieve_natura_raster: true
   custom_busmap: false
+  drop_leap_days: true
 
 # docs in https://pypsa-eur.readthedocs.io/en/latest/configuration.html#co2-budget
 co2_budget:
@@ -220,6 +224,9 @@ renewable:
     flatten_dispatch: false
     flatten_dispatch_buffer: 0.2
     clip_min_inflow: 1.0
+    eia_norm_year: 2013
+    eia_correct_by_capacity: false
+    eia_approximate_missing: false
 
 # docs in https://pypsa-eur.readthedocs.io/en/latest/configuration.html#conventional
 conventional:
@@ -267,6 +274,7 @@ load:
   time_shift_for_large_gaps: 1w
   manual_adjustments: true # false
   scaling_factor: 1.0
+  fixed_year: false # false or year (e.g. 2013)
 
 # docs
 # TODO: PyPSA-Eur merge issue in prepare_sector_network.py
