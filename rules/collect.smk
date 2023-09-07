@@ -57,7 +57,7 @@ rule prepare_brownfield_sector_networks:
     input:
         expand(
             RESULTS
-            + "prenetworks-brownfield/elec_s{simpl}_{clusters}_l{ll}_{opts}_{sector_opts}_{planning_horizons}.nc",
+            + "prenetworks-brownfield/elec{weather_year}_s{simpl}_{clusters}_l{ll}_{opts}_{sector_opts}_{planning_horizons}.nc",
             **config["scenario"]
         ),
 

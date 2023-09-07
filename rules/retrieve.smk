@@ -162,8 +162,7 @@ if config["enable"]["retrieve"] and (
         script:
             "../scripts/retrieve_gas_infrastructure_data.py"
 
-
-if config["enable"]["retrieve"]:
+if config["enable"]["retrieve"] and config["enable"].get("retrieve_opsd_load_data", True):
 
     rule retrieve_electricity_demand:
         input:
@@ -185,6 +184,17 @@ if config["enable"]["retrieve"]:
         retries: 2
         run:
             move(input[0], output[0])
+
+
+if config["enable"]["retrieve"] and config["enable"].get('retrieve_artificial_load_data', False):
+
+    rule retrieve_artificial_load_data:
+        input: HTTP.remote("https://zenodo.org/record/7070438/files/demand_hourly.csv", keep_local=True, static=True)
+        output: "data/load_artificial_raw.csv"
+        log: LOGS + "retrieve_artificial_load_data.log"
+        resources: mem_mb=5000,
+        retries: 2
+        run: move(input[0], output[0])
 
 
 if config["enable"]["retrieve"]:
