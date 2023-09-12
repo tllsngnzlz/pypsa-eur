@@ -285,9 +285,25 @@ if __name__ == "__main__":
     if "snakemake" not in globals():
         from _helpers import mock_snakemake
 
-        snakemake = mock_snakemake("build_electricity_demand")
+        snakemake = mock_snakemake("build_electricity_demand", weather_year="")
 
     configure_logging(snakemake)
+
+    weather_year = snakemake.wildcards.weather_year
+    if weather_year:
+        snapshots = dict(
+            start=weather_year, end=str(int(weather_year) + 1), inclusive="left"
+        )
+    else:
+        snapshots = snakemake.params.snapshots
+    snapshots = pd.date_range(freq="h", **snapshots)
+
+    fixed_year = snakemake.config["load"].get("fixed_year", False)
+    years = (
+        slice(str(fixed_year), str(fixed_year))
+        if fixed_year
+        else slice(snapshots[0], snapshots[-1])
+    )
 
     powerstatistics = snakemake.params.load["power_statistics"]
     interpolate_limit = snakemake.params.load["interpolate_limit"]
@@ -317,5 +333,9 @@ if __name__ == "__main__":
         "`time_shift_for_large_gaps` or modify the `manual_adjustment` function "
         "for implementing the needed load data modifications."
     )
+
+    # need to reindex load time series to target year
+    if fixed_year:
+        load.index = load.index.map(lambda t: t.replace(year=snapshots.year[0]))
 
     load.to_csv(snakemake.output[0])

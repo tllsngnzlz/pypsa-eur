@@ -651,7 +651,9 @@ if __name__ == "__main__":
         from _helpers import mock_snakemake
 
         snakemake = mock_snakemake(
-            "solve_network",
+            "solve_sector_network",
+            configfiles="test/config.overnight.yaml",
+            weather_year="",
             simpl="",
             opts="Ept",
             clusters="37",

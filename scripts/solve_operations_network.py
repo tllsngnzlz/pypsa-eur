@@ -24,6 +24,7 @@ if __name__ == "__main__":
         snakemake = mock_snakemake(
             "solve_operations_network",
             configfiles="test/config.electricity.yaml",
+            weather_year="",
             simpl="",
             opts="",
             clusters="5",

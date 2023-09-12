@@ -67,7 +67,7 @@ if __name__ == "__main__":
     if "snakemake" not in globals():
         from _helpers import mock_snakemake  # rule must be enabled in config
 
-        snakemake = mock_snakemake("prepare_links_p_nom", simpl="")
+        snakemake = mock_snakemake("prepare_links_p_nom", simpl="", weather_year="")
     configure_logging(snakemake)
 
     links_p_nom = pd.read_html(

@@ -15,8 +15,6 @@ Relevant Settings
 
 .. code:: yaml
 
-    snapshots:
-
     countries:
 
     electricity:

@@ -613,6 +613,7 @@ if __name__ == "__main__":
 
         snakemake = mock_snakemake(
             "add_existing_baseyear",
+            weather_year="",
             configfiles="config/test/config.myopic.yaml",
             simpl="",
             clusters="5",

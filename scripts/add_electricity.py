@@ -802,17 +802,34 @@ def attach_line_rating(
         n.lines_t.s_max_pu = n.lines_t.s_max_pu.clip(upper=max_line_rating)
     n.lines_t.s_max_pu *= s_max_pu
 
+def drop_leap_day(n):
+    if not n.snapshots.is_leap_year.any():
+        return
+    leap_days = (n.snapshots.day == 29) & (n.snapshots.month == 2)
+    n.set_snapshots(n.snapshots[~leap_days])
+    n.snapshot_weightings[:] = 8760 / len(n.snapshots)
+    logger.info("Dropped February 29 from leap year.")
 
 if __name__ == "__main__":
     if "snakemake" not in globals():
         from _helpers import mock_snakemake
 
-        snakemake = mock_snakemake("add_electricity")
+        snakemake = mock_snakemake("add_electricity", weather_year="")
     configure_logging(snakemake)
 
     params = snakemake.params
 
     n = pypsa.Network(snakemake.input.base_network)
+
+    weather_year = snakemake.wildcards.weather_year
+    if weather_year:
+        snapshots = dict(
+            start=weather_year, end=str(int(weather_year) + 1), inclusive="left"
+        )
+    else:
+        snapshots = snakemake.config["snapshots"]
+    n.set_snapshots(pd.date_range(freq="h", **snapshots))
+
     Nyears = n.snapshot_weightings.objective.sum() / 8760.0
 
     costs = load_costs(
@@ -920,6 +937,9 @@ if __name__ == "__main__":
         )
 
     sanitize_carriers(n, snakemake.config)
+
+    if snakemake.config["enable"].get("drop_leap_days", True):
+        drop_leap_day(n)
 
     n.meta = snakemake.config
     n.export_to_netcdf(snakemake.output[0])
