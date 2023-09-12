@@ -143,7 +143,7 @@ rule build_heat_demands:
     params:
         snapshots=config["snapshots"],
     input:
-        pop_layout=RESOURCES + "pop_layout{weather_year}_{scope}.nc",
+        pop_layout=RESOURCES + "pop_layout_{scope}{weather_year}.nc",
         regions_onshore=RESOURCES + "regions_onshore_elec{weather_year}_s{simpl}_{clusters}.geojson",
         cutout="cutouts/" + CDIR + config["atlite"]["default_cutout"] + ".nc",
     output:
@@ -165,7 +165,7 @@ rule build_temperature_profiles:
     params:
         snapshots=config["snapshots"],
     input:
-        pop_layout=RESOURCES + "pop_layout{weather_year}_{scope}.nc",
+        pop_layout=RESOURCES + "pop_layout_{scope}{weather_year}.nc",
         regions_onshore=RESOURCES + "regions_onshore_elec{weather_year}_s{simpl}_{clusters}.geojson",
         cutout="cutouts/" + CDIR + config["atlite"]["default_cutout"] + ".nc",
     output:
@@ -218,7 +218,7 @@ rule build_solar_thermal_profiles:
         snapshots=config["snapshots"],
         solar_thermal=config["solar_thermal"],
     input:
-        pop_layout=RESOURCES + "pop_layout{weather_year}_{scope}.nc",
+        pop_layout=RESOURCES + "pop_layout_{scope}{weather_year}.nc",
         regions_onshore=RESOURCES + "regions_onshore_elec{weather_year}_s{simpl}_{clusters}.geojson",
         cutout="cutouts/" + CDIR + config["atlite"]["default_cutout"] + ".nc",
     output:

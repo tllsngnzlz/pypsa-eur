@@ -394,7 +394,7 @@ rule add_electricity:
         fuel_price=RESOURCES + "monthly_fuel_price.csv"
         if config["conventional"]["dynamic_fuel_price"]
         else [],
-        load=RESOURCES + "load{weather_year}.csv",
+        load=RESOURCES + "load.csv",
         nuts3_shapes=RESOURCES + "nuts3_shapes.geojson",
     output:
         RESOURCES + "networks/elec{weather_year}.nc",
