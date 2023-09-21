@@ -18,42 +18,23 @@ if config["enable"].get("prepare_links_p_nom", False):
             "../scripts/prepare_links_p_nom.py"
 
 
-if config["enable"].get("retrieve_opsd_load_data", True):
-
-    rule build_electricity_demand:
-        params:
-            snapshots=config["snapshots"],
-            countries=config["countries"],
-            load=config["load"],
-        input:
-            ancient("data/load_raw.csv"),
-        output:
-            RESOURCES + "load.csv",
-        log:
-            LOGS + "build_electricity_demand.log",
-        resources:
-            mem_mb=5000,
-        conda:
-            "../envs/environment.yaml"
-        script:
-            "../scripts/build_electricity_demand.py"
-
-
-if config["enable"].get("retrieve_artificial_load_data", False):
-
-    rule build_artificial_load_data:
-        input:
-            ancient("data/load_artificial_raw.csv"),
-        output:
-            RESOURCES + "load{weather_year}.csv",
-        log:
-            LOGS + "build_artificial_load_data{weather_year}.log",
-        resources:
-            mem_mb=5000,
-        conda:
-            "../envs/environment.yaml"
-        script:
-            "../scripts/build_artificial_load_data.py"
+rule build_electricity_demand:
+    params:
+        snapshots=config["snapshots"],
+        countries=config["countries"],
+        load=config["load"],
+    input:
+        ancient("data/load_raw.csv"),
+    output:
+        RESOURCES + "load.csv",
+    log:
+        LOGS + "build_electricity_demand.log",
+    resources:
+        mem_mb=5000,
+    conda:
+        "../envs/environment.yaml"
+    script:
+        "../scripts/build_electricity_demand.py"
 
 
 rule build_powerplants:
