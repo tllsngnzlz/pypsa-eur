@@ -225,8 +225,6 @@ renewable:
     flatten_dispatch_buffer: 0.2
     clip_min_inflow: 1.0
     eia_norm_year: 2013
-    eia_correct_by_capacity: false
-    eia_approximate_missing: false
 
 # docs in https://pypsa-eur.readthedocs.io/en/latest/configuration.html#conventional
 conventional:

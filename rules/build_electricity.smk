@@ -320,12 +320,9 @@ rule build_hydro_profile:
     input:
         country_shapes=RESOURCES + "country_shapes.geojson",
         eia_hydro_generation="data/eia_hydro_annual_generation.csv",
-        eia_hydro_capacity="data/eia_hydro_annual_capacity.csv",
-        era5_runoff="data/era5-annual-runoff-per-country.csv",
         cutout=f"cutouts/" + CDIR + config["renewable"]["hydro"]["cutout"] + ".nc",
     output:
         profile=RESOURCES + "profile{weather_year}_hydro.nc",
-        eia_hydro=RESOURCES + "eia_hydro_annual_generation{weather_year}.csv",
     log:
         LOGS + "build_hydro_profile{weather_year}.log",
     resources:
