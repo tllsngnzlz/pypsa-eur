@@ -264,23 +264,6 @@ rule build_energy_totals:
         "../scripts/build_energy_totals.py"
 
 
-rule build_heat_totals:
-    input:
-        hdd="data/era5-annual-HDD-per-country.csv",
-        energy_totals=RESOURCES + "energy_totals.csv",
-    output:
-        heat_totals=RESOURCES + "heat_totals.csv"
-    threads: 1
-    resources: mem_mb=2000
-    log:
-        LOGS + "build_heat_totals.log",
-    benchmark:
-        BENCHMARKS + "build_heat_totals",
-    conda:
-        "../envs/environment.yaml"
-    script:
-        "../scripts/build_heat_totals.py"
-
 
 rule build_biomass_potentials:
     params:
@@ -746,8 +729,6 @@ rule prepare_sector_network:
         eurostat=input_eurostat,
         pop_weighted_energy_totals=RESOURCES
         + "pop_weighted_energy_totals{weather_year}_s{simpl}_{clusters}.csv",
-        pop_weighted_heat_totals=RESOURCES
-        + "pop_weighted_heat_totals{weather_year}_s{simpl}_{clusters}.csv",
         shipping_demand=RESOURCES + "shipping_demand{weather_year}_s{simpl}_{clusters}.csv",
         transport_demand=RESOURCES + "transport_demand{weather_year}_s{simpl}_{clusters}.csv",
         transport_data=RESOURCES + "transport_data{weather_year}_s{simpl}_{clusters}.csv",
