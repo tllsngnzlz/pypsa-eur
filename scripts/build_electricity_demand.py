@@ -289,7 +289,11 @@ if __name__ == "__main__":
 
     configure_logging(snakemake)
 
-    weather_year = snakemake.wildcards.weather_year
+    try:
+        weather_year = snakemake.wildcards.weather_year
+    except AttributeError:
+        weather_year = None
+        
     if weather_year:
         snapshots = dict(
             start=weather_year, end=str(int(weather_year) + 1), inclusive="left"
