@@ -22,7 +22,7 @@ foresight: myopic
 # docs in https://pypsa-eur.readthedocs.io/en/latest/configuration.html#scenario
 # Wildcard docs in https://pypsa-eur.readthedocs.io/en/latest/wildcards.html
 scenario:
-  weather_year: [''] # for backwards compatibility
+  weather_year: [''] # "" for backwards compatibility
   simpl:
   - ''
   ll:
@@ -50,12 +50,43 @@ snapshots:
 enable:
   retrieve: auto
   prepare_links_p_nom: false
-  retrieve_databundle: true
-  retrieve_sector_databundle: true
+  retrieve_databundle: false
+  retrieve_sector_databundle: false
   retrieve_cost_data: true
   build_cutout: false
-  retrieve_cutout: true
+  retrieve_cutout: false
   build_natura_raster: false
   retrieve_natura_raster: true
   custom_busmap: false
   drop_leap_days: true
+
+atlite:
+  default_cutout: europe-2013-era5 # build_heat_demand, build_temperature_profile, build_solar_thermal_profile, all sorts of population layouts 
+  cutouts:
+    europe-2010-era5:
+      module: era5
+      x: [-12., 35.]
+      y: [33., 72]
+      dx: 0.3
+      dy: 0.3
+      time: ['2010', '2010']
+    europe-2013-era5:
+      module: era5
+      x: [-12., 35.]
+      y: [33., 72]
+      dx: 0.3
+      dy: 0.3
+      time: ['2013', '2013']
+
+renewable:
+  onwind:
+    cutout: europe-2010-era5
+  offwind-ac:
+    cutout: europe-2010-era5
+  offwind-dc:
+    cutout: europe-2010-era5
+  solar:
+    cutout: europe-2010-era5 #sarah?
+  hydro:
+    cutout: europe-2010-era5
+    eia_norm_year: "" # weather year has to be set as well if eia_norm_year is set
