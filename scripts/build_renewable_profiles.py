@@ -259,8 +259,11 @@ if __name__ == "__main__":
     else:
         client = None
 
-    #sns = pd.date_range(freq="h", **snakemake.config["snapshots"])
-    cutout = atlite.Cutout(snakemake.input.cutout)#.sel(time=sns)
+    weather_year = snakemake.wildcards.weather_year
+    cutout_name = snakemake.input.cutout    
+    cutout_name = cutout_name.format(weather_year=weather_year)
+    cutout = atlite.Cutout(cutout_name)
+    cutout = atlite.Cutout(snakemake.input.cutout)
     cutout = replace_cutout_index_year(cutout)
     
     regions = gpd.read_file(snakemake.input.regions)

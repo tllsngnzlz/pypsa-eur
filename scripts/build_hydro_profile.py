@@ -164,8 +164,7 @@ if __name__ == "__main__":
     configure_logging(snakemake)
 
     params_hydro = snakemake.params.hydro
-    cutout = atlite.Cutout(snakemake.input.cutout)
-
+    
     countries = snakemake.params.countries
     country_shapes = (
         gpd.read_file(snakemake.input.country_shapes)
@@ -183,7 +182,12 @@ if __name__ == "__main__":
         eia_stats.loc[weather_year] = eia_stats.loc[norm_year]
     elif weather_year and weather_year not in eia_stats.index:
         eia_stats.loc[weather_year] = eia_stats.median()
-
+    
+    cutout_name = snakemake.input.cutout    
+    if weather_year:
+            cutout_name = cutout_name.format(weather_year=weather_year)
+    cutout = atlite.Cutout(cutout_name)
+    
     inflow = cutout.runoff(
         shapes=country_shapes,
         smooth=True,

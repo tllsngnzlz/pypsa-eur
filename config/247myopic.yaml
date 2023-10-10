@@ -22,7 +22,7 @@ foresight: myopic
 # docs in https://pypsa-eur.readthedocs.io/en/latest/configuration.html#scenario
 # Wildcard docs in https://pypsa-eur.readthedocs.io/en/latest/wildcards.html
 scenario:
-  weather_year: [''] # "" for backwards compatibility
+  weather_year: ['2010'] # defines renewables cutout
   simpl:
   - ''
   ll:
@@ -42,7 +42,7 @@ countries: ['AL', 'AT', 'BA', 'BE', 'BG', 'CH', 'CZ', 'DE', 'DK', 'EE', 'ES', 'F
 
 # docs in https://pypsa-eur.readthedocs.io/en/latest/configuration.html#snapshots
 snapshots:
-  start: "2013-01-01"
+  start: "2013-01-01" # same as base cutout
   end: "2014-01-01"
   inclusive: 'left'
 
@@ -80,13 +80,13 @@ atlite:
 
 renewable:
   onwind:
-    cutout: europe-2010-era5
+    cutout: europe-{weather_year}-era5
   offwind-ac:
-    cutout: europe-2010-era5
+    cutout: europe-{weather_year}-era5
   offwind-dc:
-    cutout: europe-2010-era5
+    cutout: europe-{weather_year}-era5
   solar:
-    cutout: europe-2010-era5 #sarah?
+    cutout: europe-{weather_year}-era5 #sarah?
   hydro:
-    cutout: europe-2010-era5
+    cutout: europe-{weather_year}-era5
     eia_norm_year: "" # weather year has to be set as well if eia_norm_year is set
