@@ -149,8 +149,8 @@ if __name__ == "__main__":
     configure_logging(snakemake)
 
     n = pypsa.Network(snakemake.input.base_network)
-    time = pd.date_range(freq="h", **snakemake.config["snapshots"])
-    cutout = atlite.Cutout(snakemake.input.cutout).sel(time=time)
+    #time = pd.date_range(freq="h", **snakemake.config["snapshots"])
+    cutout = atlite.Cutout(snakemake.input.cutout)#.sel(time=time)
 
     da = calculate_line_rating(n, cutout)
     da.to_netcdf(snakemake.output[0])

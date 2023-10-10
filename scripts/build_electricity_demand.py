@@ -321,8 +321,4 @@ if __name__ == "__main__":
         "for implementing the needed load data modifications."
     )
 
-    # need to reindex load time series to target year
-    if fixed_year:
-        load.index = load.index.map(lambda t: t.replace(year=snapshots.year[0]))
-
     load.to_csv(snakemake.output[0])

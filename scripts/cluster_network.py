@@ -462,7 +462,7 @@ if __name__ == "__main__":
         from _helpers import mock_snakemake
 
         snakemake = mock_snakemake(
-            "cluster_network", simpl="", clusters="5", weather_year=""
+            "cluster_network", simpl="", clusters="37", weather_year="", configfiles=["config/247myopic.yaml"]
         )
     configure_logging(snakemake)
 
