@@ -60,7 +60,7 @@ Description
 """
 
 import logging
-
+import xarray as xr
 import atlite
 import country_converter as coco
 import geopandas as gpd
@@ -125,11 +125,42 @@ def get_eia_annual_hydro_generation(fn, countries, capacities=False):
 
 logger = logging.getLogger(__name__)
 
+def replace_xarray_index_year(data_array):
+    snapshots = snakemake.config["snapshots"]
+    new_index = pd.date_range(freq="h", **snapshots)
+
+    # Create boolean masks for both conditions
+    new_has_leap = (new_index.month == 2) & (new_index.day == 29)
+    data_has_leap = (data_array.time.dt.month == 2) & (data_array.time.dt.day == 29)
+
+    # If the new year has a Feb 29, but data_array doesn't
+    if new_has_leap.any() and not data_has_leap.any():
+        # Fill missing values with data from the day before the gap
+        leap_day = data_array.sel(time=(data_array.time.dt.month == 2) & (data_array.time.dt.day == 28))
+        
+        # Generate a new time index just for February 29th of the new year
+        start_date = pd.Timestamp(snapshots['start'])
+        end_date = pd.Timestamp(snapshots['end'])
+        leap_year = start_date.year if start_date.month <= 2 else end_date.year
+        leap_day = leap_day.assign_coords(time=pd.date_range(start=f"{leap_year}-02-29", periods=24, freq='H'))
+        
+        # Concatenate data arrays around the leap day
+        data_array = xr.concat([data_array.sel(time=data_array.time.dt.month < 3 ), leap_day, data_array.sel(time=data_array.time.dt.month >= 3)], dim="time")
+        
+    # If data_array has a Feb 29, but the new year doesn't
+    elif data_has_leap.any() and not new_has_leap.any():
+        # Drop February 29 data from data_array
+        data_array = data_array.where(~data_has_leap, drop=True)
+        
+    new_data_array = data_array.assign_coords(time=new_index)
+    return new_data_array
+
+
 if __name__ == "__main__":
     if "snakemake" not in globals():
         from _helpers import mock_snakemake
 
-        snakemake = mock_snakemake("build_hydro_profile", weather_year="")
+        snakemake = mock_snakemake("build_hydro_profile", configfiles=["config/247myopic.yaml"], weather_year="2013",)
     configure_logging(snakemake)
 
     params_hydro = snakemake.params.hydro
@@ -162,5 +193,7 @@ if __name__ == "__main__":
 
     if "clip_min_inflow" in params_hydro:
         inflow = inflow.where(inflow > params_hydro["clip_min_inflow"], 0)
+
+    inflow = replace_xarray_index_year(inflow)
 
     inflow.to_netcdf(snakemake.output.profile)

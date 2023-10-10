@@ -195,13 +195,47 @@ from shapely.geometry import LineString
 
 logger = logging.getLogger(__name__)
 
+def replace_cutout_index_year(cutout):
+    snapshots = snakemake.config["snapshots"]
+    # Extract data from the cutout with old index
+    data_array = cutout.data
+
+    # New time index
+    new_index = pd.date_range(freq="h", **snapshots)
+
+    # Handling the leap day
+    new_has_leap = (new_index.month == 2) & (new_index.day == 29)
+    data_has_leap = (data_array.time.dt.month == 2) & (data_array.time.dt.day == 29)
+
+    # If the new year has a Feb 29, but data_array doesn't
+    if new_has_leap.any() and not data_has_leap.any():
+        leap_day = data_array.sel(time=(data_array.time.dt.month == 2) & (data_array.time.dt.day == 28))
+        
+        # Generate a new time index just for February 29th of the new year
+        start_date = pd.Timestamp(snapshots['start'])
+        end_date = pd.Timestamp(snapshots['end'])
+        leap_year = start_date.year if start_date.month <= 2 else end_date.year        
+        leap_day = leap_day.assign_coords(time=pd.date_range(start=f"{leap_year}-02-29", periods=24, freq='H'))
+        
+        # Concatenate data arrays around the leap day
+        data_array = xr.concat([data_array.sel(time=data_array.time.dt.month < 3 ), leap_day, data_array.sel(time=data_array.time.dt.month >= 3)], dim="time")
+    elif data_has_leap.any() and not new_has_leap.any():
+        data_array = data_array.where(~data_has_leap, drop=True)
+
+    # Assign the new time index to the data
+    data_array = data_array.assign_coords(time=new_index)
+
+    # Replace the old data in the cutout with the modified data
+    cutout.data = data_array
+
+    return cutout
 
 if __name__ == "__main__":
     if "snakemake" not in globals():
         from _helpers import mock_snakemake
 
         snakemake = mock_snakemake(
-            "build_renewable_profiles", technology="solar", weather_year=""
+            "build_renewable_profiles", technology="solar", weather_year="2010", configfiles=["config/247myopic.yaml"]
         )
     configure_logging(snakemake)
 
@@ -225,8 +259,10 @@ if __name__ == "__main__":
     else:
         client = None
 
-    sns = pd.date_range(freq="h", **snakemake.config["snapshots"])
-    cutout = atlite.Cutout(snakemake.input.cutout).sel(time=sns)
+    #sns = pd.date_range(freq="h", **snakemake.config["snapshots"])
+    cutout = atlite.Cutout(snakemake.input.cutout)#.sel(time=sns)
+    cutout = replace_cutout_index_year(cutout)
+    
     regions = gpd.read_file(snakemake.input.regions)
     assert not regions.empty, (
         f"List of regions in {snakemake.input.regions} is empty, please "
