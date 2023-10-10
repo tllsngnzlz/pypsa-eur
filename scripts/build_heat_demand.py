@@ -29,15 +29,9 @@ if __name__ == "__main__":
     client = Client(cluster, asynchronous=True)
 
     cutout_name = snakemake.input.cutout
-    year = snakemake.wildcards.weather_year
+    snapshots = snakemake.params.snapshots
 
-    if year:
-        snapshots = dict(start=year, end=str(int(year) + 1), inclusive="left")
-        cutout_name = cutout_name.format(weather_year=year)
-    else:
-        snapshots = snakemake.params.snapshots
-
-    drop_leap_day = snakemake.config["atlite"].get("drop_leap_day", False)
+    drop_leap_day = snakemake.config["enable"].get("drop_leap_day", False)
     time = pd.date_range(freq="h", **snapshots)
     daily = pd.date_range(freq="D", **snapshots)
     if drop_leap_day:

@@ -29,9 +29,6 @@ if __name__ == "__main__":
     logging.basicConfig(level=snakemake.config["logging"]["level"])
 
     cutout_name = snakemake.input.cutout
-    year = snakemake.wildcards.weather_year
-    if year:
-        cutout_name = cutout_name.format(weather_year=year)
     cutout = atlite.Cutout(cutout_name)
 
     grid_cells = cutout.grid.geometry

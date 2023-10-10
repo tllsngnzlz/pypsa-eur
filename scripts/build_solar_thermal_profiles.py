@@ -31,16 +31,10 @@ if __name__ == "__main__":
     config = snakemake.params.solar_thermal
 
     cutout_name = snakemake.input.cutout
-    year = snakemake.wildcards.weather_year
-
-    if year:
-        snapshots = dict(start=year, end=str(int(year) + 1), inclusive="left")
-        cutout_name = cutout_name.format(weather_year=year)
-    else:
-        snapshots = snakemake.params.snapshots
+    snapshots = snakemake.params.snapshots
 
     time = pd.date_range(freq="h", **snapshots)
-    if snakemake.config["atlite"].get("drop_leap_day", False):
+    if snakemake.config["enable"].get("drop_leap_day", False):
         time = time[~((time.month == 2) & (time.day == 29))]
 
     cutout = atlite.Cutout(cutout_name).sel(time=time)

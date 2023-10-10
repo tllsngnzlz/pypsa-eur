@@ -289,25 +289,8 @@ if __name__ == "__main__":
 
     configure_logging(snakemake)
 
-    try:
-        weather_year = snakemake.wildcards.weather_year
-    except AttributeError:
-        weather_year = None
-        
-    if weather_year:
-        snapshots = dict(
-            start=weather_year, end=str(int(weather_year) + 1), inclusive="left"
-        )
-    else:
-        snapshots = snakemake.params.snapshots
+    snapshots = snakemake.params.snapshots
     snapshots = pd.date_range(freq="h", **snapshots)
-
-    fixed_year = snakemake.config["load"].get("fixed_year", False)
-    years = (
-        slice(str(fixed_year), str(fixed_year))
-        if fixed_year
-        else slice(snapshots[0], snapshots[-1])
-    )
 
     powerstatistics = snakemake.params.load["power_statistics"]
     interpolate_limit = snakemake.params.load["interpolate_limit"]
