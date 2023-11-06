@@ -103,12 +103,19 @@ if __name__ == "__main__":
     if "snakemake" not in globals():
         from _helpers import mock_snakemake
 
-        snakemake = mock_snakemake("build_cutout", cutout="europe-2013-era5")
+        snakemake = mock_snakemake("build_cutout", cutout="europe-era5_2013")
     configure_logging(snakemake)
 
     cutout_params = snakemake.params.cutouts[snakemake.wildcards.cutout]
 
-    snapshots = pd.date_range(freq="h", **snakemake.params.snapshots)
+    year = snakemake.config['snapshots'].get('year', '2013')
+    boundary = snakemake.config['snapshots'].get('year_boundary', '01-01')
+    snapshots = pd.date_range(
+            f"{year}-{boundary}",
+            end=f"{int(year) + 1}-{boundary}",
+            freq="h",
+            inclusive="left",
+        )
     time = [snapshots[0], snapshots[-1]]
     cutout_params["time"] = slice(*cutout_params.get("time", time))
 

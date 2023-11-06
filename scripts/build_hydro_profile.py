@@ -60,7 +60,7 @@ Description
 """
 
 import logging
-
+import xarray as xr
 import atlite
 import country_converter as coco
 import geopandas as gpd
@@ -123,6 +123,40 @@ def get_eia_annual_hydro_generation(fn, countries):
 
 logger = logging.getLogger(__name__)
 
+def replace_xarray_index_year(data_array):
+   
+    # New time index
+    year = snakemake.config['snapshots'].get('year', '2013')
+    boundary = snakemake.config['snapshots'].get('year_boundary', '01-01')
+    new_index = pd.date_range(
+            f"{year}-{boundary}",
+            end=f"{int(year) + 1}-{boundary}",
+            freq="h",
+            inclusive="left",
+        )
+
+    # Handling the leap day
+    new_has_leap = (new_index.month == 2) & (new_index.day == 29)
+    data_has_leap = (data_array.time.dt.month == 2) & (data_array.time.dt.day == 29)
+
+    # If the new year has a Feb 29, but data_array doesn't
+    if new_has_leap.any() and not data_has_leap.any():
+        # Fill missing values with data from the day before the gap
+        leap_day = data_array.sel(time=(data_array.time.dt.month == 2) & (data_array.time.dt.day == 28))
+        
+        # Generate a new time index just for February 29th of the new year      
+        leap_day = leap_day.assign_coords(time=pd.date_range(start=f"{year}-02-29", periods=24, freq='H'))        
+        # Concatenate data arrays around the leap day
+        data_array = xr.concat([data_array.sel(time=data_array.time.dt.month < 3 ), leap_day, data_array.sel(time=data_array.time.dt.month >= 3)], dim="time")
+        
+    # If data_array has a Feb 29, but the new year doesn't
+    elif data_has_leap.any() and not new_has_leap.any():
+        # Drop February 29 data from data_array
+        data_array = data_array.where(~data_has_leap, drop=True)
+    # Assign the new time index to the data
+    new_data_array = data_array.assign_coords(time=new_index).chunk({"time": 100})
+    return new_data_array
+
 if __name__ == "__main__":
     if "snakemake" not in globals():
         from _helpers import mock_snakemake
@@ -131,8 +165,7 @@ if __name__ == "__main__":
     configure_logging(snakemake)
 
     params_hydro = snakemake.params.hydro
-    cutout = atlite.Cutout(snakemake.input.cutout)
-
+    
     countries = snakemake.params.countries
     country_shapes = (
         gpd.read_file(snakemake.input.country_shapes)
@@ -144,6 +177,14 @@ if __name__ == "__main__":
     fn = snakemake.input.eia_hydro_generation
     eia_stats = get_eia_annual_hydro_generation(fn, countries)
 
+    weather_year = snakemake.wildcards.weather_year
+    norm_year = params_hydro.get("eia_norm_year")
+    if norm_year:
+        eia_stats.loc[weather_year] = eia_stats.loc[norm_year]
+    elif weather_year and weather_year not in eia_stats.index:
+        eia_stats.loc[weather_year] = eia_stats.median()
+    cutout = atlite.Cutout(snakemake.input.cutout)
+    
     inflow = cutout.runoff(
         shapes=country_shapes,
         smooth=True,
@@ -154,4 +195,6 @@ if __name__ == "__main__":
     if "clip_min_inflow" in params_hydro:
         inflow = inflow.where(inflow > params_hydro["clip_min_inflow"], 0)
 
-    inflow.to_netcdf(snakemake.output[0])
+    inflow = replace_xarray_index_year(inflow)
+
+    inflow.to_netcdf(snakemake.output.profile)

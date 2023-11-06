@@ -14,20 +14,21 @@ rule plot_network:
         plotting=config["plotting"],
     input:
         network=RESULTS
-        + "postnetworks/elec_s{simpl}_{clusters}_l{ll}_{opts}_{sector_opts}_{planning_horizons}.nc",
-        regions=RESOURCES + "regions_onshore_elec_s{simpl}_{clusters}.geojson",
+        + "postnetworks/elec{weather_year}_s{simpl}_{clusters}_l{ll}_{opts}_{sector_opts}_{planning_horizons}.nc",
+        regions=RESOURCES
+        + "regions_onshore_elec{weather_year}_s{simpl}_{clusters}.geojson",
     output:
         map=RESULTS
-        + "maps/elec_s{simpl}_{clusters}_l{ll}_{opts}_{sector_opts}-costs-all_{planning_horizons}.pdf",
+        + "maps/elec{weather_year}_s{simpl}_{clusters}_l{ll}_{opts}_{sector_opts}-costs-all_{planning_horizons}.pdf",
         today=RESULTS
-        + "maps/elec_s{simpl}_{clusters}_l{ll}_{opts}_{sector_opts}_{planning_horizons}-today.pdf",
+        + "maps/elec{weather_year}_s{simpl}_{clusters}_l{ll}_{opts}_{sector_opts}_{planning_horizons}-today.pdf",
     threads: 2
     resources:
         mem_mb=10000,
     benchmark:
         (
             BENCHMARKS
-            + "plot_network/elec_s{simpl}_{clusters}_l{ll}_{opts}_{sector_opts}_{planning_horizons}"
+            + "plot_network/elec{weather_year}_s{simpl}_{clusters}_l{ll}_{opts}_{sector_opts}_{planning_horizons}"
         )
     conda:
         "../envs/environment.yaml"
@@ -39,7 +40,7 @@ rule copy_config:
     params:
         RDIR=RDIR,
     output:
-        RESULTS + "config/config.yaml",
+        RESULTS + "config.yaml",
     threads: 1
     resources:
         mem_mb=1000,
@@ -77,7 +78,7 @@ rule make_summary:
     input:
         networks=expand(
             RESULTS
-            + "postnetworks/elec_s{simpl}_{clusters}_l{ll}_{opts}_{sector_opts}_{planning_horizons}.nc",
+            + "postnetworks/elec{weather_year}_s{simpl}_{clusters}_l{ll}_{opts}_{sector_opts}_{planning_horizons}.nc",
             **config["scenario"]
         ),
         costs="data/costs_{}.csv".format(config["costs"]["year"])
@@ -85,7 +86,7 @@ rule make_summary:
         else "data/costs_{}.csv".format(config["scenario"]["planning_horizons"][0]),
         plots=expand(
             RESULTS
-            + "maps/elec_s{simpl}_{clusters}_l{ll}_{opts}_{sector_opts}-costs-all_{planning_horizons}.pdf",
+            + "maps/elec{weather_year}_s{simpl}_{clusters}_l{ll}_{opts}_{sector_opts}-costs-all_{planning_horizons}.pdf",
             **config["scenario"]
         ),
     output:
@@ -122,6 +123,8 @@ rule plot_summary:
         countries=config["countries"],
         planning_horizons=config["scenario"]["planning_horizons"],
         sector_opts=config["scenario"]["sector_opts"],
+        emissions_scope=config["energy"]["emissions"],
+        eurostat_report_year=config["energy"]["eurostat_report_year"],
         plotting=config["plotting"],
         RDIR=RDIR,
     input:
@@ -129,6 +132,7 @@ rule plot_summary:
         energy=RESULTS + "csvs/energy.csv",
         balances=RESULTS + "csvs/supply_energy.csv",
         eurostat=input_eurostat,
+        co2="data/bundle-sector/eea/UNFCCC_v23.csv",
     output:
         costs=RESULTS + "graphs/costs.pdf",
         energy=RESULTS + "graphs/energy.pdf",

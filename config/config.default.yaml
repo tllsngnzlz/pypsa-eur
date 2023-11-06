@@ -42,15 +42,15 @@ scenario:
   # - 2030
   # - 2040
   - 2050
+  weather_year: '2013' # defines renewables and hydro cutout. "2000-2002+2005" -> 2000, 2001, 2002, 2005
 
 # docs in https://pypsa-eur.readthedocs.io/en/latest/configuration.html#countries
 countries: ['AL', 'AT', 'BA', 'BE', 'BG', 'CH', 'CZ', 'DE', 'DK', 'EE', 'ES', 'FI', 'FR', 'GB', 'GR', 'HR', 'HU', 'IE', 'IT', 'LT', 'LU', 'LV', 'ME', 'MK', 'NL', 'NO', 'PL', 'PT', 'RO', 'RS', 'SE', 'SI', 'SK']
 
 # docs in https://pypsa-eur.readthedocs.io/en/latest/configuration.html#snapshots
 snapshots:
-  start: "2013-01-01"
-  end: "2014-01-01"
-  inclusive: 'left'
+  year_boundary: '01-01'
+  year: '2013' # controls the time span of the network and the default cutout
 
 # docs in https://pypsa-eur.readthedocs.io/en/latest/configuration.html#enable
 enable:
@@ -64,6 +64,7 @@ enable:
   build_natura_raster: false
   retrieve_natura_raster: true
   custom_busmap: false
+  drop_leap_days: false
 
 # docs in https://pypsa-eur.readthedocs.io/en/latest/configuration.html#co2-budget
 co2_budget:
@@ -117,21 +118,21 @@ electricity:
 
 # docs in https://pypsa-eur.readthedocs.io/en/latest/configuration.html#atlite
 atlite:
-  default_cutout: europe-2013-era5
+  default_cutout: europe-era5
   nprocesses: 4
   show_progress: false
   cutouts:
     # use 'base' to determine geographical bounds and time span from config
     # base:
       # module: era5
-    europe-2013-era5:
+    europe-era5_2013:
       module: era5 # in priority order
       x: [-12., 35.]
       y: [33., 72]
       dx: 0.3
       dy: 0.3
       time: ['2013', '2013']
-    europe-2013-sarah:
+    europe-sarah_2013:
       module: [sarah, era5] # in priority order
       x: [-12., 45.]
       y: [33., 65]
@@ -145,7 +146,7 @@ atlite:
 # docs in https://pypsa-eur.readthedocs.io/en/latest/configuration.html#renewable
 renewable:
   onwind:
-    cutout: europe-2013-era5
+    cutout: europe-era5
     resource:
       method: wind
       turbine: Vestas_V112_3MW
@@ -160,7 +161,7 @@ renewable:
     potential: simple # or conservative
     clip_p_max_pu: 1.e-2
   offwind-ac:
-    cutout: europe-2013-era5
+    cutout: europe-era5
     resource:
       method: wind
       turbine: NREL_ReferenceTurbine_5MW_offshore
@@ -175,7 +176,7 @@ renewable:
     potential: simple # or conservative
     clip_p_max_pu: 1.e-2
   offwind-dc:
-    cutout: europe-2013-era5
+    cutout: europe-era5
     resource:
       method: wind
       turbine: NREL_ReferenceTurbine_5MW_offshore
@@ -190,7 +191,7 @@ renewable:
     potential: simple # or conservative
     clip_p_max_pu: 1.e-2
   solar:
-    cutout: europe-2013-sarah
+    cutout: europe-era5
     resource:
       method: pv
       panel: CSi
@@ -205,11 +206,14 @@ renewable:
     potential: simple # or conservative
     clip_p_max_pu: 1.e-2
   hydro:
-    cutout: europe-2013-era5
+    cutout: europe-era5
     carriers: [ror, PHS, hydro]
     PHS_max_hours: 6
     hydro_max_hours: "energy_capacity_totals_by_country" # one of energy_capacity_totals_by_country, estimate_by_large_installations or a float
+    flatten_dispatch: false
+    flatten_dispatch_buffer: 0.2
     clip_min_inflow: 1.0
+    eia_norm_year: ""
 
 # docs in https://pypsa-eur.readthedocs.io/en/latest/configuration.html#conventional
 conventional:
@@ -688,6 +692,8 @@ plotting:
     H2: "Hydrogen Storage"
     lines: "Transmission Lines"
     ror: "Run of River"
+    ac: "AC"
+    dc: "DC"
 
   tech_colors:
     # wind

@@ -42,7 +42,7 @@ def has_internet_access(url="www.zenodo.org") -> bool:
 def input_eurostat(w):
     # 2016 includes BA, 2017 does not
     report_year = config["energy"]["eurostat_report_year"]
-    return f"data/eurostat-energy_balances-june_{report_year}_edition"
+    return f"data/bundle-sector/eurostat-energy_balances-june_{report_year}_edition"
 
 
 def solved_previous_horizon(wildcards):
@@ -51,7 +51,7 @@ def solved_previous_horizon(wildcards):
     planning_horizon_p = str(planning_horizons[i - 1])
     return (
         RESULTS
-        + "postnetworks/elec_s{simpl}_{clusters}_l{ll}_{opts}_{sector_opts}_"
+        + "postnetworks/elec{weather_year}_s{simpl}_{clusters}_l{ll}_{opts}_{sector_opts}_"
         + planning_horizon_p
         + ".nc"
     )

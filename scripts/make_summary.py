@@ -683,9 +683,10 @@ if __name__ == "__main__":
     logging.basicConfig(level=snakemake.config["logging"]["level"])
 
     networks_dict = {
-        (cluster, ll, opt + sector_opt, planning_horizon): "results/"
+        (weather_year, cluster, ll, opt + sector_opt, planning_horizon): "results/"
         + snakemake.params.RDIR
         + f"/postnetworks/elec_s{simpl}_{cluster}_l{ll}_{opt}_{sector_opt}_{planning_horizon}.nc"
+        for weather_year in snakemake.params.scenario["weather_year"]
         for simpl in snakemake.params.scenario["simpl"]
         for cluster in snakemake.params.scenario["clusters"]
         for opt in snakemake.params.scenario["opts"]
@@ -694,7 +695,15 @@ if __name__ == "__main__":
         for planning_horizon in snakemake.params.scenario["planning_horizons"]
     }
 
-    Nyears = len(pd.date_range(freq="h", **snakemake.params.snapshots)) / 8760
+    years = snakemake.config["snapshots"]["years"]
+    years_boundary = snakemake.config["snapshots"]["year_boundary"]
+    snapshots = pd.date_range(
+        f"{years[0]}-{years_boundary}",
+        end=f"{years[-1] + 1}-{years_boundary}",
+        freq="h",
+        inclusive="left",
+    )
+    Nyears = len(snapshots) / 8760
 
     costs_db = prepare_costs(
         snakemake.input.costs,
@@ -711,5 +720,5 @@ if __name__ == "__main__":
     if snakemake.params.foresight == "myopic":
         cumulative_cost = calculate_cumulative_cost()
         cumulative_cost.to_csv(
-            "results/" + snakemake.params.RDIR + "/csvs/cumulative_cost.csv"
+            "results/" + snakemake.params.RDIR + "csvs/cumulative_cost.csv"
         )

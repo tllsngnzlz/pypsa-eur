@@ -27,7 +27,14 @@ if __name__ == "__main__":
     cluster = LocalCluster(n_workers=nprocesses, threads_per_worker=1)
     client = Client(cluster, asynchronous=True)
 
-    time = pd.date_range(freq="h", **snakemake.params.snapshots)
+    year = snakemake.config['snapshots'].get('year', '2013')
+    boundary = snakemake.config['snapshots'].get('year_boundary', '01-01')
+    time = pd.date_range(
+            f"{year}-{boundary}",
+            end=f"{int(year) + 1}-{boundary}",
+            freq="h",
+            inclusive="left",
+        )
     cutout = atlite.Cutout(snakemake.input.cutout).sel(time=time)
 
     clustered_regions = (

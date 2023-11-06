@@ -92,7 +92,7 @@ import powerplantmatching as pm
 import pypsa
 import scipy.sparse as sparse
 import xarray as xr
-from _helpers import configure_logging, update_p_nom_max
+from _helpers import configure_logging, update_p_nom_max, drop_leap_day
 from powerplantmatching.export import map_country_bus
 from shapely.prepared import prep
 
@@ -596,6 +596,14 @@ def attach_hydro(n, costs, ppl, profile_hydro, hydro_capacities, carriers, **par
             hydro.max_hours > 0, hydro.country.map(max_hours_country)
         ).fillna(6)
 
+        flatten_dispatch = params.get("flatten_dispatch", False)
+        if flatten_dispatch:
+            buffer = params.get("flatten_dispatch_buffer", 0.2)
+            average_capacity_factor = inflow_t[hydro.index].mean() / hydro["p_nom"]
+            p_max_pu = (average_capacity_factor + buffer).clip(upper=1)
+        else:
+            p_max_pu = 1
+
         n.madd(
             "StorageUnit",
             hydro.index,
@@ -605,7 +613,7 @@ def attach_hydro(n, costs, ppl, profile_hydro, hydro_capacities, carriers, **par
             max_hours=hydro_max_hours,
             capital_cost=costs.at["hydro", "capital_cost"],
             marginal_cost=costs.at["hydro", "marginal_cost"],
-            p_max_pu=1.0,  # dispatch
+            p_max_pu=p_max_pu,  # dispatch
             p_min_pu=0.0,  # store
             efficiency_dispatch=costs.at["hydro", "efficiency"],
             efficiency_store=0.0,
@@ -695,13 +703,14 @@ def attach_OPSD_renewables(n, tech_map):
         {"Solar": "PV"}
     )
     df = df.query("Fueltype in @tech_map").powerplant.convert_country_to_alpha2()
+    df = df.dropna(subset=["lat", "lon"])
 
     for fueltype, carriers in tech_map.items():
         gens = n.generators[lambda df: df.carrier.isin(carriers)]
         buses = n.buses.loc[gens.bus.unique()]
         gens_per_bus = gens.groupby("bus").p_nom.count()
 
-        caps = map_country_bus(df.query("Fueltype == @fueltype and lat == lat"), buses)
+        caps = map_country_bus(df.query("Fueltype == @fueltype"), buses)
         caps = caps.groupby(["bus"]).Capacity.sum()
         caps = caps / gens_per_bus.reindex(caps.index, fill_value=1)
 
@@ -784,6 +793,17 @@ if __name__ == "__main__":
     params = snakemake.params
 
     n = pypsa.Network(snakemake.input.base_network)
+    # Setting the network snapshots only in `add_electricity.py`, using the `year_boundary` config and {year} wildcard.
+    year = snakemake.config['snapshots'].get('year', '2013')
+    boundary = snakemake.config['snapshots'].get('year_boundary', '01-01')
+    year_range = pd.date_range(
+            f"{year}-{boundary}",
+            end=f"{int(year) + 1}-{boundary}",
+            freq="h",
+            inclusive="left",
+        )
+    n.set_snapshots(year_range)
+
     Nyears = n.snapshot_weightings.objective.sum() / 8760.0
 
     costs = load_costs(
@@ -874,6 +894,9 @@ if __name__ == "__main__":
         )
 
     sanitize_carriers(n, snakemake.config)
+
+    if snakemake.config["enable"].get("drop_leap_days", False):
+        n=drop_leap_day(n)
 
     n.meta = snakemake.config
     n.export_to_netcdf(snakemake.output[0])

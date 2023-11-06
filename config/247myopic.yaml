@@ -1,0 +1,96 @@
+# SPDX-FileCopyrightText: : 2017-2023 The PyPSA-Eur Authors
+#
+# SPDX-License-Identifier: CC0-1.0
+
+# docs in https://pypsa-eur.readthedocs.io/en/latest/configuration.html#top-level-configuration
+tutorial: false
+
+logging:
+  level: INFO
+  format: '%(levelname)s:%(name)s:%(message)s'
+
+# docs in https://pypsa-eur.readthedocs.io/en/latest/configuration.html#run
+run:
+  name: "247myopic"
+  disable_progressbar: false
+  shared_resources: false
+  shared_cutouts: true
+
+# docs in https://pypsa-eur.readthedocs.io/en/latest/configuration.html#foresight
+foresight: myopic
+
+# docs in https://pypsa-eur.readthedocs.io/en/latest/configuration.html#scenario
+# Wildcard docs in https://pypsa-eur.readthedocs.io/en/latest/wildcards.html
+scenario:
+  weather_year: '1980-1982' # defines renewables and hydro cutout. "2000-2002+2005" -> 2000, 2001, 2002, 2005
+  simpl:
+  - ''
+  ll:
+  - v1.0
+  clusters:
+  - 37
+  opts:
+  - ''
+  sector_opts:
+  - 3H-B-solar+p3
+  planning_horizons:
+  - 2025 
+
+# docs in https://pypsa-eur.readthedocs.io/en/latest/configuration.html#countries
+countries: ['AL', 'AT', 'BA', 'BE', 'BG', 'CH', 'CZ', 'DE', 'DK', 'EE', 'ES', 'FI', 'FR', 'GB', 'GR', 'HR', 'HU', 'IE', 'IT', 'LT', 'LU', 'LV', 'ME', 'MK', 'NL', 'NO', 'PL', 'PT', 'RO', 'RS', 'SE', 'SI', 'SK']
+
+# docs in https://pypsa-eur.readthedocs.io/en/latest/configuration.html#snapshots
+snapshots:
+  year_boundary: '01-01'
+  year: '2013'
+  
+# docs in https://pypsa-eur.readthedocs.io/en/latest/configuration.html#enable
+enable:
+  retrieve: auto
+  prepare_links_p_nom: false
+  retrieve_databundle: false
+  retrieve_sector_databundle: false
+  retrieve_cost_data: true
+  build_cutout: false
+  retrieve_cutout: false
+  build_natura_raster: false
+  retrieve_natura_raster: true
+  custom_busmap: false
+  drop_leap_days: true
+
+atlite:
+  default_cutout: europe-era5 # used for build_heat_demand, build_temperature_profile, build_solar_thermal_profile, all sorts of population layouts 
+  cutouts: # only necessary for retrieving and building cutouts NOT for already downloaded cutouts
+    europe-2011-era5: 
+      module: era5
+      x: [-12., 35.]
+      y: [33., 72]
+      dx: 0.3
+      dy: 0.3
+      time: ['2010', '2010']
+    europe-2013-era5:
+      module: era5
+      x: [-12., 35.]
+      y: [33., 72]
+      dx: 0.3
+      dy: 0.3
+      time: ['2013', '2013']
+
+renewable:
+  onwind:
+    cutout: europe-era5
+  offwind-ac:
+    cutout: europe-era5
+  offwind-dc:
+    cutout: europe-era5
+  solar:
+    cutout: europe-era5 #sarah?
+  hydro:
+    cutout: europe-era5
+    eia_norm_year: "" # weather year has to be set as well if eia_norm_year is set
+
+sector:
+  electricity_distribution_grid: false # puts all electrical loads on the transmission grid (fixes - low voltage suffix problem)
+
+costs:
+  year: 2025 # Year for which to retrieve cost assumptions of data/costs_{year}.csv.

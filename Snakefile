@@ -4,6 +4,7 @@
 
 from os.path import normpath, exists
 from shutil import copyfile, move, rmtree
+from scripts._helpers import parse_year_wildcard
 
 from snakemake.remote.HTTP import RemoteProvider as HTTPRemoteProvider
 
@@ -40,10 +41,15 @@ localrules:
 
 wildcard_constraints:
     simpl="[a-zA-Z0-9]*",
-    clusters="[0-9]+m?|all",
+    clusters="[0-9]+(m|c)?|all",
     ll="(v|c)([0-9\.]+|opt)",
     opts="[-+a-zA-Z0-9\.]*",
     sector_opts="[-+a-zA-Z0-9\.\s]*",
+    # The {Weather_year} wildcard represents a set of years and consists of a
+    # number of single years or ranges (of the form 2000-2020) all
+    # separated by `+`s.
+    weather_year="([0-9]+)(-[0-9]+)?(\+([0-9]+)(-[0-9]+)?)*",
+    year="[0-9]{4}|"
 
 
 include: "rules/common.smk"
@@ -85,7 +91,7 @@ rule dag:
         "envs/environment.yaml"
     shell:
         """
-        snakemake --rulegraph all | sed -n "/digraph/,\$p" > {output.dot}
+        snakemake --rulegraph prepare_brownfield_sector_networks --configfile config/247myopic.yaml | sed -n "/digraph/,\$p" > {output.dot}
         dot -Tpdf -o {output.pdf} {output.dot}
         dot -Tpng -o {output.png} {output.dot}
         """

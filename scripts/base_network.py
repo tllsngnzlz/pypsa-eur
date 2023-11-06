@@ -337,7 +337,7 @@ def _load_lines_from_eg(buses, eg_lines):
     )
 
     lines["length"] /= 1e3
-
+    lines["carrier"] = "AC"
     lines = _remove_dangling_branches(lines, buses)
 
     return lines
@@ -713,7 +713,6 @@ def base_network(
     n = pypsa.Network()
     n.name = "PyPSA-Eur"
 
-    n.set_snapshots(pd.date_range(freq="h", **config["snapshots"]))
     n.madd("Carrier", ["AC", "DC"])
 
     n.import_components_from_dataframe(buses, "Bus")
@@ -743,7 +742,10 @@ if __name__ == "__main__":
     if "snakemake" not in globals():
         from _helpers import mock_snakemake
 
-        snakemake = mock_snakemake("base_network")
+        snakemake = mock_snakemake(
+            "base_network",
+            configfiles='config/247myopic.yaml',
+            )
     configure_logging(snakemake)
 
     n = base_network(

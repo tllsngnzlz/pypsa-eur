@@ -186,6 +186,7 @@ import time
 import atlite
 import geopandas as gpd
 import numpy as np
+import pandas as pd
 import xarray as xr
 from _helpers import configure_logging
 from dask.distributed import Client
@@ -194,12 +195,50 @@ from shapely.geometry import LineString
 
 logger = logging.getLogger(__name__)
 
+def replace_cutout_index_year(cutout):
+    # Extract data from the cutout with old index
+    data_array = cutout.data
+
+    # New time index
+    year = snakemake.config['snapshots'].get('year', '2013')
+    boundary = snakemake.config['snapshots'].get('year_boundary', '01-01')
+    new_index = pd.date_range(
+        f"{year}-{boundary}",
+        f"{int(year) + 1}-{boundary}",
+        freq="H",
+        inclusive='left',
+    )
+
+    # Handling the leap day
+    new_has_leap = new_index.is_leap_year.any() and ((new_index.month == 2) & (new_index.day == 29)).any()
+    data_has_leap = ((data_array.time.dt.month == 2) & (data_array.time.dt.day == 29)).any()
+
+    # Adjust the data_array for leap years
+    if new_has_leap and not data_has_leap:
+        # Construct the leap day data by repeating the last day of February
+        last_of_feb = data_array.sel(time=data_array.time.dt.strftime('%m-%d') == f"{year}-02-28")
+        leap_day = last_of_feb.copy(deep=True).assign_coords(time=pd.Timestamp(f"{year}-02-29"))
+        # Concatenate the data arrays to include the leap day
+        before_march = data_array.sel(time=data_array.time.dt.month < 3)
+        after_feb = data_array.sel(time=data_array.time.dt.month > 2)
+        data_array = xr.concat([before_march, leap_day, after_feb], dim="time")
+    elif data_has_leap and not new_has_leap:
+        # Exclude the leap day
+        data_array = data_array.sel(time=~((data_array.time.dt.month == 2) & (data_array.time.dt.day == 29)))
+
+    # Assign the new time index to the data_array
+    data_array = data_array.assign_coords(time=new_index)
+
+    # Update the cutout with the reindexed data
+    cutout.data = data_array.chunk({"time": 100})
+
+    return cutout
 
 if __name__ == "__main__":
     if "snakemake" not in globals():
         from _helpers import mock_snakemake
 
-        snakemake = mock_snakemake("build_renewable_profiles", technology="solar")
+        snakemake = mock_snakemake("build_renewable_profiles", technology="solar", weather_year="1980", configfiles=["config/247myopic.yaml"])
     configure_logging(snakemake)
 
     nprocesses = int(snakemake.threads)
@@ -222,7 +261,10 @@ if __name__ == "__main__":
     else:
         client = None
 
+
     cutout = atlite.Cutout(snakemake.input.cutout)
+    cutout = replace_cutout_index_year(cutout)
+    
     regions = gpd.read_file(snakemake.input.regions)
     assert not regions.empty, (
         f"List of regions in {snakemake.input.regions} is empty, please "
@@ -372,4 +414,6 @@ if __name__ == "__main__":
         ds["profile"] = ds["profile"].where(ds["profile"] >= min_p_max_pu, 0)
 
     ds.to_netcdf(snakemake.output.profile)
-    client.shutdown()
+
+    if client is not None:
+        client.shutdown()

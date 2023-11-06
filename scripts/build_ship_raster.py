@@ -55,18 +55,26 @@ if __name__ == "__main__":
     if "snakemake" not in globals():
         from _helpers import mock_snakemake
 
-        snakemake = mock_snakemake("build_ship_raster")
+        snakemake = mock_snakemake(
+            "build_ship_raster",
+            weather_year=1980,
+            )
     configure_logging(snakemake)
-
+    
+    tif_path = "shipdensity_global.tif"
     cutouts = snakemake.input.cutouts
     xs, Xs, ys, Ys = zip(*(determine_cutout_xXyY(cutout) for cutout in cutouts))
 
     with zipfile.ZipFile(snakemake.input.ship_density) as zip_f:
-        zip_f.extract("shipdensity_global.tif")
-        with rioxarray.open_rasterio("shipdensity_global.tif") as ship_density:
+        zip_f.extract(tif_path)
+        with rioxarray.open_rasterio(tif_path) as ship_density:
             ship_density = ship_density.drop(["band"]).sel(
                 x=slice(min(xs), max(Xs)), y=slice(max(Ys), min(ys))
             )
             ship_density.rio.to_raster(snakemake.output[0])
-
-    os.remove("shipdensity_global.tif")
+    
+# Check if the file exists before trying to delete it
+if os.path.exists(tif_path):
+    os.remove(tif_path)
+else:
+    logger.warning(f"The file {tif_path} does not exist and might have already been removed.")

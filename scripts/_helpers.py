@@ -15,6 +15,8 @@ import yaml
 from pypsa.components import component_attrs, components
 from pypsa.descriptors import Dict
 from tqdm import tqdm
+import sys
+from typing import List
 
 logger = logging.getLogger(__name__)
 
@@ -27,6 +29,43 @@ def mute_print():
     with open(os.devnull, "w") as devnull:
         with contextlib.redirect_stdout(devnull):
             yield
+
+def drop_leap_day(n):
+    if n.snapshots.is_leap_year.any():
+        leap_days = (n.snapshots.day == 29) & (n.snapshots.month == 2)
+        n.set_snapshots(n.snapshots[~leap_days])
+        n.snapshot_weightings[:] = 8760 / len(n.snapshots)
+        logger.info("Dropped February 29 from leap year.")
+    return n
+
+
+def parse_year_wildcard(w: str) -> List[int]:
+    """Parse a {weather_year} wildcard to a list of years.
+
+    The wildcard can be of the form `1980+1990+2000-2002`; a set of
+    ranges (two years joined by a `-`) and individual years all
+    separated by `+`s. The above wildcard is parsed to the list [1980,
+    1990, 2000, 2001, 2002].
+
+    """
+    years = []
+    for rng in w.split("+"):
+        try:
+            if "-" in rng:
+                # `rng` is a range of years.
+                [start, end] = rng.split("-")
+                # Check that the range is well-formed.
+                if end < start:
+                    raise ValueError(f"Malformed range of years {rng}.")
+                # Add the range (inclusive) to the set of years.
+                years.extend(range(int(start), int(end) + 1))
+            else:
+                # `rng` is just a single year.
+                years.append(int(rng))
+        except ValueError:
+            raise ValueError(f"Illegal range of years {rng} encountered.")
+    # Sort the years before returning.
+    return sorted(years)
 
 
 def configure_logging(snakemake, skip_handlers=False):
@@ -293,9 +332,15 @@ def generate_periodic_profiles(dt_index, nodes, weekly_profile, localize=None):
 
     for node in nodes:
         timezone = pytz.timezone(pytz.country_timezones[node[:2]][0])
-        tz_dt_index = dt_index.tz_convert(timezone)
+        if dt_index.tz is None:
+            # Localize if dt_index is naive
+            tz_dt_index = dt_index.tz_localize("Etc/GMT+1") # hotfix to circumvent naive datetime error.
+        else:
+            # Convert if dt_index is already timezone-aware
+            tz_dt_index = dt_index.tz_convert(timezone)
         week_df[node] = [24 * dt.weekday() + dt.hour for dt in tz_dt_index]
         week_df[node] = week_df[node].map(weekly_profile)
+
 
     week_df = week_df.tz_localize(localize)
 

@@ -208,7 +208,7 @@ if __name__ == "__main__":
     if "snakemake" not in globals():
         from _helpers import mock_snakemake
 
-        snakemake = mock_snakemake("build_biomass_potentials", simpl="", clusters="5")
+        snakemake = mock_snakemake("build_biomass_potentials", simpl="", clusters="5", weather_year="1980", configfiles="config/247myopic.yaml",)
 
     params = snakemake.params.biomass
     year = params["year"]

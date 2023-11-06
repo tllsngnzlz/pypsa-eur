@@ -17,7 +17,7 @@ import numpy as np
 import pandas as pd
 import pypsa
 import xarray as xr
-from _helpers import generate_periodic_profiles, update_config_with_sector_opts
+from _helpers import generate_periodic_profiles, update_config_with_sector_opts, drop_leap_day
 from add_electricity import calculate_annuity, sanitize_carriers
 from build_energy_totals import build_co2_totals, build_eea_co2, build_eurostat_co2
 from networkx.algorithms import complement
@@ -180,28 +180,55 @@ def emission_sectors_from_opts(opts):
     return sectors
 
 
+def linear_interpolate(years, values, target_year):
+    """
+    Perform linear interpolation for a target year using provided years and values for items dependend on target year.
+    """
+    # If the target year is exactly one of the years in the list, return its corresponding value.
+    if target_year in years:
+        return values[years.index(target_year)]
+
+    # Otherwise, find the two years surrounding the target year.
+    for i in range(len(years) - 1):
+        year_start, year_end = years[i], years[i + 1]
+
+        if year_start <= target_year <= year_end:
+            val_start, val_end = values[i], values[i + 1]
+
+            # Perform linear interpolation.
+            interpolated_value = val_start + (val_end - val_start) * (target_year - year_start) / (year_end - year_start)
+            return interpolated_value
+
+    # If the target_year is out of the provided years range, you can raise an error or handle it differently.
+    raise ValueError("Target year is out of range for interpolation.")
+
 def get(item, investment_year=None):
     """
     Check whether item depends on investment year.
     """
     if isinstance(item, dict):
-        return item[investment_year]
+        # If investment_year is directly available, return its value
+        if investment_year in item:
+            return item[investment_year]
+        # If not, interpolate its value
+        sorted_years = sorted(item.keys())
+        sorted_values = [item[year] for year in sorted_years]
+        return linear_interpolate(sorted_years, sorted_values, investment_year)
+
     else:
         return item
 
 
 def co2_emissions_year(
-    countries, input_eurostat, opts, emissions_scope, report_year, year
+    countries, input_eurostat, opts, emissions_scope, report_year, input_co2, year
 ):
     """
     Calculate CO2 emissions in one specific year (e.g. 1990 or 2018).
     """
-    emissions_scope = snakemake.params.energy["emissions"]
-    eea_co2 = build_eea_co2(snakemake.input.co2, year, emissions_scope)
+    eea_co2 = build_eea_co2(input_co2, year, emissions_scope)
 
     # TODO: read Eurostat data from year > 2014
     # this only affects the estimation of CO2 emissions for BA, RS, AL, ME, MK
-    report_year = snakemake.params.energy["eurostat_report_year"]
     if year > 2014:
         eurostat_co2 = build_eurostat_co2(
             input_eurostat, countries, report_year, year=2014
@@ -222,7 +249,7 @@ def co2_emissions_year(
 
 
 # TODO: move to own rule with sector-opts wildcard?
-def build_carbon_budget(o, input_eurostat, fn, emissions_scope, report_year):
+def build_carbon_budget(o, input_eurostat, fn, emissions_scope, report_year, input_co2):
     """
     Distribute carbon budget following beta or exponential transition path.
     """
@@ -240,12 +267,24 @@ def build_carbon_budget(o, input_eurostat, fn, emissions_scope, report_year):
     countries = snakemake.params.countries
 
     e_1990 = co2_emissions_year(
-        countries, input_eurostat, opts, emissions_scope, report_year, year=1990
+        countries,
+        input_eurostat,
+        opts,
+        emissions_scope,
+        report_year,
+        input_co2,
+        year=1990,
     )
 
     # emissions at the beginning of the path (last year available 2018)
     e_0 = co2_emissions_year(
-        countries, input_eurostat, opts, emissions_scope, report_year, year=2018
+        countries,
+        input_eurostat,
+        opts,
+        emissions_scope,
+        report_year,
+        input_co2,
+        year=2018,
     )
 
     planning_horizons = snakemake.params.planning_horizons
@@ -691,7 +730,7 @@ def add_co2limit(n, nyears=1.0, limit=0.0):
 
 
 # TODO PyPSA-Eur merge issue
-def average_every_nhours(n, offset):
+def average_every_nhours(n, offset, drop_leap_day=False):
     logger.info(f"Resampling the network to {offset}")
     m = n.copy(with_time=False)
 
@@ -709,6 +748,10 @@ def average_every_nhours(n, offset):
                     pnl[k] = df.resample(offset).max()
                 else:
                     pnl[k] = df.resample(offset).mean()
+
+    if drop_leap_day:
+        sns = m.snapshots[~((m.snapshots.month == 2) & (m.snapshots.day == 29))]
+        m.set_snapshots(sns)
 
     return m
 
@@ -2185,6 +2228,27 @@ def add_biomass(n, costs):
             carrier="solid biomass transport",
         )
 
+    elif options["biomass_spatial"]:
+        # add artificial biomass generators at nodes which include transport costs
+        transport_costs = pd.read_csv(
+            snakemake.input.biomass_transport_costs, index_col=0
+        )
+        transport_costs = transport_costs.squeeze()
+        bus_transport_costs = spatial.biomass.nodes.to_series().apply(
+            lambda x: transport_costs[x[:2]]
+        )
+        average_distance = 200  # km #TODO: validate this assumption
+
+        n.madd(
+            "Generator",
+            spatial.biomass.nodes,
+            bus=spatial.biomass.nodes,
+            carrier="solid biomass",
+            p_nom=10000,
+            marginal_cost=costs.at["solid biomass", "fuel"]
+            + bus_transport_costs * average_distance,
+        )
+
     # AC buses with district heating
     urban_central = n.buses.index[n.buses.carrier == "urban central heat"]
     if not urban_central.empty and options["chp"]:
@@ -3256,13 +3320,14 @@ if __name__ == "__main__":
 
         snakemake = mock_snakemake(
             "prepare_sector_network",
-            configfiles="test/config.overnight.yaml",
+            configfiles="config/247myopic.yaml",
+            weather_year="2013",
             simpl="",
             opts="",
-            clusters="5",
-            ll="v1.5",
-            sector_opts="CO2L0-24H-T-H-B-I-A-solar+p3-dist1",
-            planning_horizons="2030",
+            clusters="37",
+            ll="v1.0",
+            sector_opts="3H-B-solar+p3",
+            planning_horizons="2025",
         )
 
     logging.basicConfig(level=snakemake.config["logging"]["level"])
@@ -3364,6 +3429,10 @@ if __name__ == "__main__":
         add_allam(n, costs)
 
     solver_name = snakemake.config["solving"]["solver"]["name"]
+    #drop leap days from network snapshots
+    if snakemake.config["enable"].get("drop_leap_day", False):
+        logger.info("Dropping leap day")
+        n=drop_leap_day(n)
     n = set_temporal_aggregation(n, opts, solver_name)
 
     limit_type = "config"
@@ -3372,12 +3441,18 @@ if __name__ == "__main__":
         if "cb" not in o:
             continue
         limit_type = "carbon budget"
-        fn = "results/" + snakemake.params.RDIR + "/csvs/carbon_budget_distribution.csv"
+        fn = "results/" + snakemake.params.RDIR + "csvs/carbon_budget_distribution.csv"
         if not os.path.exists(fn):
             emissions_scope = snakemake.params.emissions_scope
             report_year = snakemake.params.eurostat_report_year
+            input_co2 = snakemake.input.co2
             build_carbon_budget(
-                o, snakemake.input.eurostat, fn, emissions_scope, report_year
+                o,
+                snakemake.input.eurostat,
+                fn,
+                emissions_scope,
+                report_year,
+                input_co2,
             )
         co2_cap = pd.read_csv(fn, index_col=0).squeeze()
         limit = co2_cap.loc[investment_year]
