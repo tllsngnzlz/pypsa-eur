@@ -217,7 +217,25 @@ def replace_cutout_index_year(cutout):
     if new_has_leap and not data_has_leap:
         # Construct the leap day data by repeating the last day of February
         last_of_feb = data_array.sel(time=data_array.time.dt.strftime('%m-%d') == f"{year}-02-28")
-        leap_day = last_of_feb.copy(deep=True).assign_coords(time=pd.Timestamp(f"{year}-02-29"))
+        # Generate time coordinate for the leap day
+        leap_day_time = pd.date_range(start=f"{year}-02-29", periods=24, freq='H')
+        
+        # Check and convert to Dataset if it's a DataArray
+        if isinstance(last_of_feb, xr.DataArray):
+            last_of_feb = last_of_feb.to_dataset(name='temp')
+
+        # Remove 'time' dimension if present, to avoid errors in expand_dims
+        if 'time' in last_of_feb.dims:
+            last_of_feb = last_of_feb.drop_dims('time')
+
+        # Now we can safely use expand_dims
+        leap_day = last_of_feb.expand_dims({'time': leap_day_time})
+
+        # Assign time coordinate to each variable in leap_day if it's a Dataset
+        if isinstance(leap_day, xr.Dataset):
+            for var in leap_day.data_vars:
+                leap_day[var]['time'] = leap_day_time
+        
         # Concatenate the data arrays to include the leap day
         before_march = data_array.sel(time=data_array.time.dt.month < 3)
         after_feb = data_array.sel(time=data_array.time.dt.month > 2)
