@@ -11,7 +11,7 @@ logging:
 
 # docs in https://pypsa-eur.readthedocs.io/en/latest/configuration.html#run
 run:
-  name: "247myopic"
+  name: "247myopic_fix_vre_SARAH"
   disable_progressbar: false
   shared_resources: false
   shared_cutouts: true
@@ -22,7 +22,7 @@ foresight: myopic
 # docs in https://pypsa-eur.readthedocs.io/en/latest/configuration.html#scenario
 # Wildcard docs in https://pypsa-eur.readthedocs.io/en/latest/wildcards.html
 scenario:
-  weather_year: '1980-1982' # defines renewables and hydro cutout. "2000-2002+2005" -> 2000, 2001, 2002, 2005
+  weather_year: '2013' # defines renewables and hydro cutout. "2000-2002+2005" -> 2000, 2001, 2002, 2005
   simpl:
   - ''
   ll:
@@ -52,7 +52,7 @@ enable:
   retrieve_sector_databundle: false
   retrieve_cost_data: true
   build_cutout: false
-  retrieve_cutout: false
+  retrieve_cutout: true
   build_natura_raster: false
   retrieve_natura_raster: true
   custom_busmap: false
@@ -60,14 +60,17 @@ enable:
 
 atlite:
   default_cutout: europe-era5 # used for build_heat_demand, build_temperature_profile, build_solar_thermal_profile, all sorts of population layouts 
-  cutouts: # only necessary for retrieving and building cutouts NOT for already downloaded cutouts
-    europe-2011-era5: 
-      module: era5
-      x: [-12., 35.]
-      y: [33., 72]
-      dx: 0.3
-      dy: 0.3
-      time: ['2010', '2010']
+  cutouts: # only necessary for building cutouts NOT for retrieving/retrieved cutouts
+    europe-sarah_2013:
+      module: [sarah, era5] # in priority order
+      x: [-12., 45.]
+      y: [33., 65]
+      dx: 0.2
+      dy: 0.2
+      time: ['2013', '2013']
+      sarah_interpolate: false
+      sarah_dir:
+      features: [influx, temperature]
     europe-2013-era5:
       module: era5
       x: [-12., 35.]
@@ -88,6 +91,10 @@ renewable:
   hydro:
     cutout: europe-era5
     eia_norm_year: "" # weather year has to be set as well if eia_norm_year is set
+
+electricity:
+  estimate_renewable_capacities:
+      enable: false
 
 sector:
   electricity_distribution_grid: false # puts all electrical loads on the transmission grid (fixes - low voltage suffix problem)
