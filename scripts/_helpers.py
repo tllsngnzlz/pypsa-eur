@@ -334,7 +334,7 @@ def generate_periodic_profiles(dt_index, nodes, weekly_profile, localize=None):
         timezone = pytz.timezone(pytz.country_timezones[node[:2]][0])
         if dt_index.tz is None:
             # Localize if dt_index is naive
-            tz_dt_index = dt_index.tz_localize("Etc/GMT+1") # hotfix to circumvent naive datetime error.
+            tz_dt_index = dt_index.tz_localize("UTC") # hotfix to circumvent naive datetime error.
         else:
             # Convert if dt_index is already timezone-aware
             tz_dt_index = dt_index.tz_convert(timezone)
